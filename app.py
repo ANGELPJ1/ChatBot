@@ -147,30 +147,33 @@ def whatsapp():
                 wb.save()
                 wb.close()
                 app_excel.quit()
-                respuesta_final = "✅ Tu ficha fue generada correctamente. Consulta con Servicios Escolares para más detalles."
+                respuesta_final = "✅ Tu ficha fue generada correctamente."
             except Exception as e:
                 respuesta_final = f"⚠️ Ocurrió un error al generar el PDF: {e}"
         else:
             respuesta_final = "👌 Entendido. No se generó la ficha."
 
         estados[numero]["paso"] = 4
-        msg.body(respuesta_final + "\n\n¿Deseas consultar otro alumno? Responde *Sí* o *No*.")
+        msg.body(respuesta_final + "\n\n🧾 ¿Deseas volver a ver tu información? Responde *Sí* o *No*.")
         return str(respuesta)
 
     # Step 4: Repeat or close
     elif estado["paso"] == 4:
         if mensaje_limpio in ["si", "sí"]:
-            estados[numero] = {"paso": 1}
-            msg.body("🔁 Perfecto. Por favor escribe el *nombre completo* del nuevo alumno.")
+            datos = estados[numero]
+            msg.body(f"""🎓 *Datos encontrados:*
+    👤 Nombre: {datos["nombre_real"]}
+    🆔 ID: {datos["id"]}
+    🏫 Campus: {datos["campus"]}
+    📘 Programa: {datos["programa"]}
+    💰 Adeudo: ${datos["adeudo"]}
+
+    ✅ Gracias por consultar tu información. Si necesitas más ayuda, escribe *Hola*.""")
+            estados.pop(numero)
         else:
             estados.pop(numero)
             msg.body("✅ Gracias por usar el asistente UNID. ¡Hasta pronto!")
         return str(respuesta)
-
-    # Fallback
-    estados.pop(numero)
-    msg.body("❌ Ocurrió un error inesperado. Escribe *Hola* para comenzar de nuevo.")
-    return str(respuesta)
 
 if __name__ == "__main__":
     app.run(debug=True)
