@@ -13,6 +13,8 @@ import pandas as pd
 import xlwings as xw
 # Clean text from Excel
 import unicodedata
+# Move PDF to static
+import shutil
 # --------------------------------------------------------------
 # Load and import env
 from dotenv import load_dotenv
@@ -147,28 +149,74 @@ def whatsapp():
                 wb.save()
                 wb.close()
                 app_excel.quit()
-                respuesta_final = "✅ Tu ficha fue generada correctamente."
-            except Exception as e:
-                respuesta_final = f"⚠️ Ocurrió un error al generar el PDF: {e}"
-        else:
-            respuesta_final = "👌 Entendido. No se generó la ficha."
 
-        estados[numero]["paso"] = 4
-        msg.body(respuesta_final + "\n\n🧾 ¿Deseas volver a ver tu información? Responde *Sí* o *No*.")
-        return str(respuesta)
+                id_alumno = estados[numero]["id"]
+                nombre_pdf = f"Ficha_{id_alumno}.pdf"
+                origen = os.path.join(os.path.dirname(EXCEL_FILE_PATH), nombre_pdf)
+
+                if not os.path.exists(origen):
+                    msg.body("⚠️ La ficha no se generó correctamente. Intenta nuevamente.")
+                    estados.pop(numero)
+                    return str(respuesta)
+
+                destino = os.path.join("static", nombre_pdf)
+                shutil.copy(origen, destino)
+
+                estados[numero]["paso"] = 4
+                estados[numero]["pdf"] = nombre_pdf
+
+                msg.body("✅ Ficha generada.\n\n¿Dónde deseas recibirla?\n\n👉 *WhatsApp* o *Correo*")
+                return str(respuesta)
+
+            except Exception as e:
+                msg.body(f"⚠️ Error al generar el PDF: {e}")
+                estados.pop(numero)
+                return str(respuesta)
+        else:
+            estados[numero]["paso"] = 5
+            msg.body("👌 La ficha no se generó.\n\n¿Deseas ver la información de nuevo? *Sí* o *No*.")
+            return str(respuesta)
 
     # Step 4: Repeat or close
     elif estado["paso"] == 4:
-        if mensaje_limpio in ["si", "sí"]:
-            datos = estados[numero]
-            msg.body(f"""🎓 *Datos encontrados:*
-    👤 Nombre: {datos["nombre_real"]}
-    🆔 ID: {datos["id"]}
-    🏫 Campus: {datos["campus"]}
-    📘 Programa: {datos["programa"]}
-    💰 Adeudo: ${datos["adeudo"]}
+        if mensaje_limpio == "whatsapp":
+            nombre_pdf = estados[numero].get("pdf")
+            if nombre_pdf:
+                url_pdf = f"{request.url_root}static/{nombre_pdf}".replace("http://", "https://")
+                msg.body("📎 Aquí tienes tu ficha de pago:\n" + url_pdf)
+                respuesta.message("✅ Gracias por usar el asistente UNID. ¡Hasta pronto!")
 
-    ✅ Gracias por consultar tu información. Si necesitas más ayuda, escribe *Hola*.""")
+            else:
+                msg.body("⚠️ No se encontró el archivo PDF. Intenta generar de nuevo con *Hola*.")
+
+            # Reiniciar el estado del usuario
+            estados.pop(numero)
+            return str(respuesta)
+
+        elif mensaje_limpio in ["correo", "email"]:
+            msg.body("📧 Tu ficha ha sido enviada por correo. Por favor, revisa tu bandeja de entrada.")
+
+            # Mensaje de cierre y reinicio
+            respuesta.message("✅ Gracias por usar el asistente UNID. ¡Hasta pronto!")
+            estados.pop(numero)
+            return str(respuesta)
+
+        else:
+            msg.body("❓ Responde *WhatsApp* o *Correo*.")
+            return str(respuesta)
+
+    # Step 5: Ver info de nuevo o finalizar
+    elif estado["paso"] == 5:
+        if mensaje_limpio in ["si", "sí"]:
+            row = df[df[COL_ID].astype(str).str.strip() == estados[numero]["id"]].iloc[0]
+            msg.body(f"""🎓 *Datos del alumno:*
+    👤 Nombre: {row[COL_NOMBRE]}
+    🆔 ID: {estados[numero]["id"]}
+    🏫 Campus: {row[COL_CAMPUS]}
+    📘 Programa: {row[COL_PROGRAMA]}
+    💰 Adeudo: ${row[COL_ADEUDO]}
+
+    📝 Si deseas volver a generar la ficha o consultar otra, escribe *Hola* nuevamente.""")
             estados.pop(numero)
         else:
             estados.pop(numero)
