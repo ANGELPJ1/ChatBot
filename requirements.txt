@@ -1,0 +1,15 @@
+flask
+twilio
+pandas
+xlwings
+unicodedata
+sutil
+dotenv
+os
+openpyxl
+
+python-dotenv
+google-api-python-client
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
