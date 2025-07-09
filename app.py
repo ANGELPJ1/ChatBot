@@ -189,14 +189,19 @@ def whatsapp():
             else:
                 msg.body("⚠️ No se encontró el archivo PDF. Intenta generar de nuevo con *Hola*.")
 
-            # Reiniciar el estado del usuario
+            # Reset the user state
             estados.pop(numero)
             return str(respuesta)
 
         elif mensaje_limpio in ["correo", "email"]:
             msg.body("📧 Tu ficha ha sido enviada por correo. Por favor, revisa tu bandeja de entrada.")
+            # Handle the email case --------------------->
+            # ---------------------------
+            # ---------------------------
+            # ---------------------------
 
-            # Mensaje de cierre y reinicio
+
+            # Closing and restarting message
             respuesta.message("✅ Gracias por usar el asistente UNID. ¡Hasta pronto!")
             estados.pop(numero)
             return str(respuesta)
@@ -205,8 +210,9 @@ def whatsapp():
             msg.body("❓ Responde *WhatsApp* o *Correo*.")
             return str(respuesta)
 
-    # Step 5: Ver info de nuevo o finalizar
+    # Step 5: Solicit information again or finish the process
     elif estado["paso"] == 5:
+        # In case the information is requested again
         if mensaje_limpio in ["si", "sí"]:
             row = df[df[COL_ID].astype(str).str.strip() == estados[numero]["id"]].iloc[0]
             msg.body(f"""🎓 *Datos del alumno:*
