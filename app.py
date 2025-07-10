@@ -57,22 +57,39 @@ def whatsapp():
     estado = estados.get(numero)
     mensaje_limpio = limpiar(mensaje)
 
-    # Step 1
+    # Step 0: Initialize the process and attempts
     if estado is None:
         if mensaje_limpio in ["hola", "hi", "buenos dias", "buenas tardes", "buenas noches", "buenas"]:
-            estados[numero] = {"paso": 1}
-            msg.body("👋 ¡Hola! Soy el asistente de UNID.\n\nPor favor, escribe tu *NOMBRE COMPLETO* tal como aparece en el sistema.")
+            estados[numero] = {"paso": 1, "intentos": 0}
+            msg.body(
+                "👋 ¡Hola! Soy el asistente de UNID.\n\nPor favor, escribe tu *NOMBRE COMPLETO* tal como aparece en el sistema.")
         else:
-            estados[numero] = {"paso": 2, "nombre": mensaje_limpio}
+            estados[numero] = {"paso": 2, "nombre": mensaje_limpio, "intentos": 0}
             msg.body("✅ Gracias. Ahora escribe tu *ID de alumno* para validar tus datos.")
         return str(respuesta)
 
     # Step 1: Get name
     if estado["paso"] == 1:
-        estados[numero]["nombre"] = mensaje_limpio
+        nombre = mensaje_limpio
+        coincidencias = df[df[COL_NOMBRE].apply(lambda x: limpiar(x)) == nombre]
+
+        if coincidencias.empty:
+            estados[numero]["intentos"] += 1
+            if estados[numero]["intentos"] >= 3:
+                msg.body("❌ Has superado el número máximo de intentos. Escribe *Hola* para comenzar de nuevo.")
+                estados.pop(numero)
+            else:
+                msg.body(
+                    f"❌ No encontré ese nombre. ({estados[numero]['intentos']}/3 intentos)\n\nPor favor, vuelve a escribir tu *NOMBRE COMPLETO* tal como aparece en el sistema.")
+            return str(respuesta)
+
+        # If there is coincidence
+        estados[numero]["nombre"] = nombre
         estados[numero]["paso"] = 2
+        estados[numero]["intentos"] = 0  # Initialize
         msg.body("✅ Gracias. Ahora escribe tu *ID de alumno* para validar tus datos.")
         return str(respuesta)
+
 
     # Step 2: Validate name + ID
     elif estado["paso"] == 2:
@@ -82,17 +99,23 @@ def whatsapp():
         coincidencias = df[df[COL_NOMBRE].apply(lambda x: limpiar(x)) == nombre]
 
         if coincidencias.empty:
+            msg.body("❌ No encontré ese nombre. Escribe *Hola* para comenzar de nuevo.")
             estados.pop(numero)
-            msg.body("❌ No encontré ese nombre. Asegúrate de escribirlo como aparece en el sistema.\n\nEscribe *Hola* para intentarlo de nuevo.")
             return str(respuesta)
 
         alumno = coincidencias[coincidencias[COL_ID].astype(str).str.strip() == id_input]
 
         if alumno.empty:
-            estados.pop(numero)
-            msg.body("❌ El ID no coincide con el nombre, operacion fallida.\n\n Escribe *Hola* para intentar de nuevo.")
+            estados[numero]["intentos"] += 1
+            if estados[numero]["intentos"] >= 3:
+                msg.body("❌ Has superado el número máximo de intentos. Escribe *Hola* para comenzar de nuevo.")
+                estados.pop(numero)
+            else:
+                msg.body(
+                    f"❌ El ID no coincide con el nombre. ({estados[numero]['intentos']}/3 intentos)\n\nPor favor, vuelve a escribir tu *ID de alumno* para validar los datos.")
             return str(respuesta)
 
+        # If there is coincidence
         row = alumno.iloc[0]
         estados[numero].update({
             "paso": 3,
@@ -100,10 +123,11 @@ def whatsapp():
             "nombre_real": row[COL_NOMBRE],
             "programa": row[COL_PROGRAMA],
             "campus": row[COL_CAMPUS],
-            "adeudo": row[COL_ADEUDO]
+            "adeudo": row[COL_ADEUDO],
+            "intentos": 0  # Initialize
         })
 
-        # Write in sheet AUX
+        # Write AUX sheet in Excel with macro
         try:
             app_excel = xw.App(visible=False)
             wb = app_excel.books.open(EXCEL_FILE_PATH)
@@ -127,15 +151,16 @@ def whatsapp():
             return str(respuesta)
 
         msg.body(f"""🎓 *Datos encontrados:*
-👤 Nombre: {row[COL_NOMBRE]}
-🆔 ID: {id_input}
-🏫 Campus: {row[COL_CAMPUS]}
-📘 Programa: {row[COL_PROGRAMA]}
-💰 Adeudo: ${row[COL_ADEUDO]}
+    👤 Nombre: {row[COL_NOMBRE]}
+    🆔 ID: {id_input}
+    🏫 Campus: {row[COL_CAMPUS]}
+    📘 Programa: {row[COL_PROGRAMA]}
+    💰 Adeudo total: ${row[COL_ADEUDO]}
 
-¿Deseas generar tu ficha de pago en PDF? Responde *Sí* o *No*.
-""")
+    ¿Deseas generar tu ficha de pago en PDF? Responde *Sí* o *No*.
+    """)
         return str(respuesta)
+
 
     # Step 3: Generate PDF
     elif estado["paso"] == 3:
