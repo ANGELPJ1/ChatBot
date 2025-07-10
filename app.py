@@ -31,7 +31,7 @@ COL_NOMBRE = os.getenv("COL_NOMBRE_LEGAL")
 COL_PROGRAMA = os.getenv("COL_PROGRAMA")
 COL_CAMPUS = os.getenv("COL_CAMPUS")
 COL_ADEUDO = os.getenv("COL_ADEUDO")
-RAILWAY_DOMAIN = os.getenv("RAILWAY_DOMAIN", "http://localhost:5000")
+RAILWAY_DOMAIN = os.getenv("RAILWAY_ENV", "http://localhost:5000")
 
 app = Flask(__name__)
 
@@ -191,7 +191,6 @@ def whatsapp():
         if mensaje_limpio == "whatsapp":
             nombre_pdf = estados[numero].get("pdf")
             if nombre_pdf:
-                # url_pdf = f"{request.url_root}static/{nombre_pdf}".replace("http://", "https://")
                 url_pdf = f"{RAILWAY_DOMAIN}/static/{nombre_pdf}"
                 msg.body("📎 Aquí tienes tu ficha de pago:\n" + url_pdf)
                 respuesta.message("✅ Gracias por usar el asistente UNID. ¡Hasta pronto!")
