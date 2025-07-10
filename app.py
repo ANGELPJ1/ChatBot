@@ -15,6 +15,8 @@ import xlwings as xw
 import unicodedata
 # Move PDF to static
 import shutil
+# generate PDF
+from fpdf import FPDF
 # --------------------------------------------------------------
 # Load and import env
 from dotenv import load_dotenv
@@ -31,6 +33,7 @@ COL_NOMBRE = os.getenv("COL_NOMBRE_LEGAL")
 COL_PROGRAMA = os.getenv("COL_PROGRAMA")
 COL_CAMPUS = os.getenv("COL_CAMPUS")
 COL_ADEUDO = os.getenv("COL_ADEUDO")
+RAILWAY_DOMAIN = os.getenv("RAILWAY_DOMAIN", "http://localhost:5000")
 
 app = Flask(__name__)
 
@@ -127,29 +130,6 @@ def whatsapp():
             "intentos": 0  # Initialize
         })
 
-        # Write AUX sheet in Excel with macro
-        try:
-            app_excel = xw.App(visible=False)
-            wb = app_excel.books.open(EXCEL_FILE_PATH)
-            hoja = wb.sheets[EXCEL_AUX_SHEET]
-            hoja["A1"].value = "NOMBRE"
-            hoja["B1"].value = row[COL_NOMBRE]
-            hoja["A2"].value = "ID"
-            hoja["B2"].value = id_input
-            hoja["A3"].value = "PROGRAMA"
-            hoja["B3"].value = row[COL_PROGRAMA]
-            hoja["A4"].value = "CAMPUS"
-            hoja["B4"].value = row[COL_CAMPUS]
-            hoja["A5"].value = "ADEUDO"
-            hoja["B5"].value = row[COL_ADEUDO]
-            wb.save()
-            wb.close()
-            app_excel.quit()
-        except Exception as e:
-            msg.body(f"⚠️ Error al escribir en Excel: {e}")
-            estados.pop(numero)
-            return str(respuesta)
-
         msg.body(f"""🎓 *Datos encontrados:*
     👤 Nombre: {row[COL_NOMBRE]}
     🆔 ID: {id_input}
@@ -161,31 +141,37 @@ def whatsapp():
     """)
         return str(respuesta)
 
-
     # Step 3: Generate PDF
     elif estado["paso"] == 3:
         if mensaje_limpio in ["si", "sí"]:
             msg.body("🛠️ Generando tu ficha, por favor espera...")
 
+            # Generate PDF with fpdf
             try:
-                app_excel = xw.App(visible=False)
-                wb = app_excel.books.open(EXCEL_FILE_PATH)
-                wb.macro(EXCEL_MACRO_NAME)()
-                wb.save()
-                wb.close()
-                app_excel.quit()
-
                 id_alumno = estados[numero]["id"]
                 nombre_pdf = f"Ficha_{id_alumno}.pdf"
-                origen = os.path.join(os.path.dirname(EXCEL_FILE_PATH), nombre_pdf)
+                ruta_pdf = os.path.join("static", nombre_pdf)
 
-                if not os.path.exists(origen):
-                    msg.body("⚠️ La ficha no se generó correctamente. Intenta nuevamente.")
-                    estados.pop(numero)
-                    return str(respuesta)
+                # Crear carpeta static si no existe
+                os.makedirs("static", exist_ok=True)
 
-                destino = os.path.join("static", nombre_pdf)
-                shutil.copy(origen, destino)
+                # Generar PDF con FPDF
+                pdf = FPDF()
+                pdf.add_page()
+                pdf.set_auto_page_break(auto=True, margin=15)
+                pdf.set_font("Arial", size=12)
+
+                pdf.cell(200, 10, txt="Ficha de Pago UNID", ln=True, align="C")
+                pdf.ln(10)
+
+                datos = estados[numero]
+                pdf.cell(200, 10, txt=f"Nombre: {datos['nombre_real']}", ln=True)
+                pdf.cell(200, 10, txt=f"ID: {id_alumno}", ln=True)
+                pdf.cell(200, 10, txt=f"Programa: {datos['programa']}", ln=True)
+                pdf.cell(200, 10, txt=f"Campus: {datos['campus']}", ln=True)
+                pdf.cell(200, 10, txt=f"Adeudo: ${datos['adeudo']}", ln=True)
+
+                pdf.output(ruta_pdf)
 
                 estados[numero]["paso"] = 4
                 estados[numero]["pdf"] = nombre_pdf
@@ -207,7 +193,8 @@ def whatsapp():
         if mensaje_limpio == "whatsapp":
             nombre_pdf = estados[numero].get("pdf")
             if nombre_pdf:
-                url_pdf = f"{request.url_root}static/{nombre_pdf}".replace("http://", "https://")
+                # url_pdf = f"{request.url_root}static/{nombre_pdf}".replace("http://", "https://")
+                url_pdf = f"{RAILWAY_DOMAIN}/static/{nombre_pdf}"
                 msg.body("📎 Aquí tienes tu ficha de pago:\n" + url_pdf)
                 respuesta.message("✅ Gracias por usar el asistente UNID. ¡Hasta pronto!")
 
@@ -220,11 +207,6 @@ def whatsapp():
 
         elif mensaje_limpio in ["correo", "email"]:
             msg.body("📧 Tu ficha ha sido enviada por correo. Por favor, revisa tu bandeja de entrada.")
-            # Handle the email case --------------------->
-            # ---------------------------
-            # ---------------------------
-            # ---------------------------
-
 
             # Closing and restarting message
             respuesta.message("✅ Gracias por usar el asistente UNID. ¡Hasta pronto!")
