@@ -9,8 +9,6 @@ from flask import Flask, request
 from twilio.twiml.messaging_response import MessagingResponse
 # Panda read an Excel file
 import pandas as pd
-# Xlwins read and execute an xlms without modifications
-import xlwings as xw
 # Clean text from Excel
 import unicodedata
 # Move PDF to static
