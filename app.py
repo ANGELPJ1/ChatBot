@@ -4,7 +4,7 @@
 # Library needed:
 # --------------------------------------------------------------
 # Server flask to connect API
-from flask import Flask, request
+from flask import Flask, request, render_template_string
 # Twilio to connect flask
 from twilio.twiml.messaging_response import MessagingResponse
 # Panda read an Excel file
@@ -13,7 +13,7 @@ import pandas as pd
 import unicodedata
 # Move PDF to static
 import shutil
-# generate PDF
+# Generate PDF
 from fpdf import FPDF
 # --------------------------------------------------------------
 # Load and import env
@@ -32,6 +32,7 @@ COL_PROGRAMA = os.getenv("COL_PROGRAMA")
 COL_CAMPUS = os.getenv("COL_CAMPUS")
 COL_ADEUDO = os.getenv("COL_ADEUDO")
 RAILWAY_DOMAIN = os.getenv("RAILWAY_ENV", "http://localhost:5000")
+UPLOAD_FILE_PWD = os.getenv("UPLOAD_PASSWORD", "password")
 
 app = Flask(__name__)
 
@@ -48,6 +49,10 @@ def limpiar(texto):
 
 # State control by number phone
 estados = {}
+
+# ----------------------------------------------------------------------------------------
+# First Endpoint
+# ----------------------------------------------------------------------------------------
 
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp():
@@ -232,6 +237,37 @@ def whatsapp():
             estados.pop(numero)
             msg.body("✅ Gracias por usar el asistente UNID. ¡Hasta pronto!")
         return str(respuesta)
+
+
+# ----------------------------------------------------------------------------------------
+# Second Endpoint
+# ----------------------------------------------------------------------------------------
+
+@app.route("/admin/upload", methods=["GET", "POST"])
+def upload_excel():
+    if request.method == "POST":
+        password = request.form.get("password")
+        file = request.files.get("file")
+
+        if password != UPLOAD_FILE_PWD:
+            return "🔒 Contraseña incorrecta", 401
+
+        if file and file.filename.endswith(".xlsm"):
+            ruta_guardado = os.path.join("data", "alumnos.xlsm")
+            file.save(ruta_guardado)
+            return "✅ Archivo subido correctamente."
+        return "⚠️ Formato no permitido. Solo se aceptan .xlsm"
+
+    return render_template_string("""
+        <h2>🔒 Subir archivo Excel</h2>
+        <form method="post" enctype="multipart/form-data">
+            <label>Contraseña:</label><br>
+            <input type="password" name="password"><br><br>
+            <input type="file" name="file" accept=".xlsm"><br><br>
+            <input type="submit" value="Subir archivo">
+        </form>
+    """)
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
