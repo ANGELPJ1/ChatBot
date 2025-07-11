@@ -39,15 +39,25 @@ app = Flask(__name__)
 # Create directory if it does not exist
 os.makedirs("data", exist_ok=True)
 
-# Read DB (only if file exists)
+# Initialize empty DataFrame
 df = pd.DataFrame()
-ruta_excel = os.path.join("data", EXCEL_FILE_PATH)
 
-if os.path.exists(ruta_excel):
-    df = pd.read_excel(ruta_excel, sheet_name=EXCEL_DATA_SHEET)
-    df.columns = df.columns.str.strip()
-else:
-    print("⚠️ Archivo Excel no encontrado. Debe subirse desde /admin/upload")
+# Function to load Excel
+def cargar_excel():
+    global df
+    ruta_excel = os.path.join("data", EXCEL_FILE_PATH)
+    if os.path.exists(ruta_excel):
+        try:
+            df = pd.read_excel(ruta_excel, sheet_name=EXCEL_DATA_SHEET)
+            df.columns = df.columns.str.strip()
+            print("✅ Excel recargado correctamente.")
+        except Exception as e:
+            print(f"❌ Error al leer el Excel: {e}")
+    else:
+        print("⚠️ Excel aún no está disponible.")
+
+# Attempt to load Excel on start
+cargar_excel()
 
 # Normalize text
 def limpiar(texto):
@@ -74,10 +84,10 @@ def whatsapp():
 
     # Validate files
     if df.empty:
-        respuesta = MessagingResponse()
-        msg = respuesta.message()
-        msg.body("⚠️ El sistema está en mantenimiento. Por favor, intenta más tarde.")
-        return str(respuesta)
+        cargar_excel()
+        if df.empty:
+            msg.body("⚠️ El sistema está en mantenimiento. Por favor, intenta más tarde.")
+            return str(respuesta)
 
     # Step 0: Initialize the process and attempts
     if estado is None:
@@ -271,6 +281,7 @@ def upload_excel():
         if file and file.filename.endswith(".xlsm"):
             ruta_guardado = os.path.join("data", EXCEL_FILE_PATH)
             file.save(ruta_guardado)
+            cargar_excel()
             return "✅ Archivo subido correctamente."
         return "⚠️ Formato no permitido. Solo se aceptan .xlsm"
 
