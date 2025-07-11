@@ -36,12 +36,18 @@ UPLOAD_FILE_PWD = os.getenv("UPLOAD_FILE_PWD", " ")
 
 app = Flask(__name__)
 
-# Read DB
-df = pd.read_excel(EXCEL_FILE_PATH, sheet_name=EXCEL_DATA_SHEET)
-df.columns = df.columns.str.strip()
-
-# Create directory if does not exist
+# Create directory if it does not exist
 os.makedirs("data", exist_ok=True)
+
+# Read DB (only if file exists)
+df = pd.DataFrame()
+ruta_excel = os.path.join("data", EXCEL_FILE_PATH)
+
+if os.path.exists(ruta_excel):
+    df = pd.read_excel(ruta_excel, sheet_name=EXCEL_DATA_SHEET)
+    df.columns = df.columns.str.strip()
+else:
+    print("⚠️ Archivo Excel no encontrado. Debe subirse desde /admin/upload")
 
 # Normalize text
 def limpiar(texto):
@@ -65,6 +71,12 @@ def whatsapp():
     msg = respuesta.message()
     estado = estados.get(numero)
     mensaje_limpio = limpiar(mensaje)
+
+    # Validate files
+    if df.empty:
+        msg = MessagingResponse().message()
+        msg.body("⚠️ El sistema está en mantenimiento. Por favor, intenta más tarde.")
+        return str(respuesta)
 
     # Step 0: Initialize the process and attempts
     if estado is None:
