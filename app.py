@@ -32,7 +32,7 @@ COL_PROGRAMA = os.getenv("COL_PROGRAMA")
 COL_CAMPUS = os.getenv("COL_CAMPUS")
 COL_ADEUDO = os.getenv("COL_ADEUDO")
 RAILWAY_DOMAIN = os.getenv("RAILWAY_ENV", "http://localhost:5000")
-UPLOAD_FILE_PWD = os.getenv("UPLOAD_PASSWORD", " ")
+UPLOAD_FILE_PWD = os.getenv("UPLOAD_FILE_PWD", " ")
 
 app = Flask(__name__)
 
