@@ -40,6 +40,9 @@ app = Flask(__name__)
 df = pd.read_excel(EXCEL_FILE_PATH, sheet_name=EXCEL_DATA_SHEET)
 df.columns = df.columns.str.strip()
 
+# Create directory if does not exist
+os.makedirs("data", exist_ok=True)
+
 # Normalize text
 def limpiar(texto):
     texto = str(texto).strip().lower()
