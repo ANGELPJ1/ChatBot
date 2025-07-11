@@ -32,7 +32,7 @@ COL_PROGRAMA = os.getenv("COL_PROGRAMA")
 COL_CAMPUS = os.getenv("COL_CAMPUS")
 COL_ADEUDO = os.getenv("COL_ADEUDO")
 RAILWAY_DOMAIN = os.getenv("RAILWAY_ENV", "http://localhost:5000")
-UPLOAD_FILE_PWD = os.getenv("UPLOAD_PASSWORD", "password")
+UPLOAD_FILE_PWD = os.getenv("UPLOAD_PASSWORD", " ")
 
 app = Flask(__name__)
 
@@ -253,7 +253,7 @@ def upload_excel():
             return "🔒 Contraseña incorrecta", 401
 
         if file and file.filename.endswith(".xlsm"):
-            ruta_guardado = os.path.join("data", "alumnos.xlsm")
+            ruta_guardado = os.path.join("data", EXCEL_FILE_PATH)
             file.save(ruta_guardado)
             return "✅ Archivo subido correctamente."
         return "⚠️ Formato no permitido. Solo se aceptan .xlsm"
