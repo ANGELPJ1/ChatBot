@@ -1,0 +1,8 @@
+# Gitignore
+.env
+*.xlsx
+*.xlsm
+__pycache__/
+*.pyc
+static/*.pdf
+data/
