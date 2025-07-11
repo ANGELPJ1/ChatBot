@@ -74,7 +74,8 @@ def whatsapp():
 
     # Validate files
     if df.empty:
-        msg = MessagingResponse().message()
+        respuesta = MessagingResponse()
+        msg = respuesta.message()
         msg.body("⚠️ El sistema está en mantenimiento. Por favor, intenta más tarde.")
         return str(respuesta)
 
